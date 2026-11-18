@@ -1,0 +1,10 @@
+{
+  "identifier": "main",
+  "description": "Local inventory window",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default"
+  ]
+}
