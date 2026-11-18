@@ -1,0 +1,92 @@
+{
+  "deepseek": [
+    {
+      "id": "deepseek-flash",
+      "name": "DeepSeek V4.1 Flash 1017"
+    },
+    {
+      "id": "deepseek-v4-pro",
+      "name": "DeepSeek V4 Pro"
+    }
+  ],
+  "moonshotai-cn": [
+    {
+      "id": "kimi-k3",
+      "name": "Kimi K3"
+    },
+    {
+      "id": "kimi-k3.1-pro",
+      "name": "Kimi K3.1 Pro"
+    }
+  ],
+  "zhipuai": [
+    {
+      "id": "glm-4.7-flash",
+      "name": "GLM-4.7-Flash"
+    },
+    {
+      "id": "glm-5.3-flash",
+      "name": "GLM-5.3-Flash"
+    },
+    {
+      "id": "glm-5.3",
+      "name": "GLM-5.3"
+    }
+  ],
+  "siliconflow-cn": [
+    {
+      "id": "deepseek-ai/DeepSeek-V4-Flash",
+      "name": "DeepSeek V4 Flash"
+    },
+    {
+      "id": "zai-org/GLM-4.5-Air",
+      "name": "zai-org/GLM-4.5-Air"
+    },
+    {
+      "id": "Qwen/Qwen3.5-27B",
+      "name": "Qwen/Qwen3.5-27B"
+    }
+  ],
+  "minimax-cn": [
+    {
+      "id": "MiniMax-M3.1-Flash",
+      "name": "MiniMax-M3.1-Flash"
+    },
+    {
+      "id": "MiniMax-M3",
+      "name": "MiniMax-M3"
+    },
+    {
+      "id": "MiniMax-M2.7",
+      "name": "MiniMax-M2.7"
+    }
+  ],
+  "openai": [
+    {
+      "id": "gpt-4o-mini",
+      "name": "GPT-4o mini"
+    },
+    {
+      "id": "gpt-4.1-mini",
+      "name": "GPT-4.1 mini"
+    },
+    {
+      "id": "gpt-4.1",
+      "name": "GPT-4.1"
+    }
+  ],
+  "google": [
+    {
+      "id": "gemini-flash-lite-latest",
+      "name": "Gemini Flash-Lite Latest"
+    },
+    {
+      "id": "gemini-flash-latest",
+      "name": "Gemini Flash Latest"
+    },
+    {
+      "id": "gemini-pro-latest",
+      "name": "Gemini Pro Latest"
+    }
+  ]
+}

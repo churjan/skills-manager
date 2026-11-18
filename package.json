@@ -1,0 +1,36 @@
+{
+  "name": "skills-manager",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:repositories": "node --test tests/repositories.test.mjs",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "tauri": "tauri",
+    "desktop": "tauri dev"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.9.0",
+    "@lobehub/icons-static-svg": "^1.102.0",
+    "@tauri-apps/api": "^2",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.4.0",
+    "lucide-react": "^1.58.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-markdown": "^10",
+    "remark-gfm": "^4"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4",
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6",
+    "tailwindcss": "^4",
+    "typescript": "~6.0.2",
+    "vite": "^8"
+  }
+}
