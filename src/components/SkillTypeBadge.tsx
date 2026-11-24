@@ -1,5 +1,5 @@
 import { Badge } from "./ui/badge"
 
-export function SkillTypeBadge({ linked }: { linked: boolean }) {
-  return linked ? <Badge variant="secondary" className="type-label">软链接</Badge> : null
+export function SkillTypeBadge({ linked, className }: { linked: boolean; className?: string }) {
+  return <Badge variant={linked ? "sourceLinked" : "source"} className={className}>{linked ? "软链接" : "实际目录"}</Badge>
 }

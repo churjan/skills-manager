@@ -9,6 +9,7 @@ const badgeVariants = cva(
     variants: {
       variant: {
         source: "bg-skill-source text-skill-source-foreground",
+        sourceLinked: "bg-skill-link text-skill-link-foreground",
         update: "h-auto rounded-[5px] px-[5px] py-0 text-[11px] leading-[17px] font-medium bg-skill-update text-skill-update-foreground",
         default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
         secondary:

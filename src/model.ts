@@ -26,6 +26,17 @@ export interface Inventory {
   errors: string[]
 }
 
+export function groupSkillDirectories(skills: Skill[]) {
+  const groups = new Map<string, [Skill, ...Skill[]]>()
+  for (const skill of skills) {
+    const key = JSON.stringify([skill.name, skill.digest, skill.digest ? "" : skill.target || skill.directory])
+    const group = groups.get(key)
+    if (group) group.push(skill)
+    else groups.set(key, [skill])
+  }
+  return [...groups.entries()]
+}
+
 export function matches(skill: Skill, query: string, summary = "") {
   const fields = [skill.name, skill.displayName, skill.description, summary, skill.directory, skill.target, skill.label, agentSource(skill.label).name]
   const haystack = fields.join(" ").toLowerCase()

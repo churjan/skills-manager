@@ -1,23 +1,27 @@
 import { useEffect, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
-import { ArrowDown, ArrowUpCircle, Check, Copy, FileText, FolderOpen, LoaderCircle } from "lucide-react"
+import { ArrowUpCircle, Check, ChevronRight, Copy, FileText, FolderOpen, LoaderCircle } from "lucide-react"
 import Markdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import githubIcon from "@lobehub/icons-static-svg/icons/github.svg"
 import { Button } from "./components/ui/button"
 import { AgentIcon } from "./components/AgentIcon"
-import { AiSummaryIcon } from "./components/AiSummaryIcon"
 import { SkillTypeBadge } from "./components/SkillTypeBadge"
+import { agentSource } from "./agentSources"
 import type { Skill, SkillUpdate } from "./model"
 import { findRepository, useRepositoryLookup } from "./repositories"
 
-function PathField({ label, path, open, report }: {
-  label: string
+function PathRow({ source, path, linked = false, hasLinks = false, open, report }: {
+  source?: string
   path: string
+  linked?: boolean
+  hasLinks?: boolean
   open?: () => void
   report: (message: string) => void
 }) {
   const [copied, setCopied] = useState(false)
+  const type = linked ? "软链接" : "实际目录"
+  const label = source ? `${source} · ${type}` : type
   async function copy() {
     try {
       await navigator.clipboard.writeText(path)
@@ -26,23 +30,22 @@ function PathField({ label, path, open, report }: {
       report("复制失败：" + String(error))
     }
   }
-  return <div className="path-section">
-    <h3>{label}</h3>
-    <div className="path-actions">
-      <div className="path-value">
-        <code>{path}</code>
-        <Button variant="ghost" size="icon-sm" onClick={copy} onBlur={() => setCopied(false)}
-          aria-label={copied ? "已复制" : "复制" + label} title={copied ? "已复制" : "复制" + label}>
-          {copied ? <Check /> : <Copy />}
-        </Button>
-      </div>
-      {open && <Button variant="outline" onClick={open}><FolderOpen data-icon="inline-start" />打开实际目录</Button>}
-    </div>
+  return <div className="directory-row" data-connection={linked ? "link" : hasLinks ? "target" : undefined}>
+    {hasLinks && <><ChevronRight className="directory-connector-tip" aria-hidden="true" /><span className="sr-only">上方软链接指向</span></>}
+    <span className="directory-source truncate" title={source}>{source}</span>
+    <SkillTypeBadge className="directory-type" linked={linked} />
+    <code className="directory-path">{path}</code>
+    <Button className="directory-copy" variant="ghost" size="icon-sm" onClick={copy} onBlur={() => setCopied(false)}
+      aria-label={copied ? "已复制" : "复制 " + label} title={copied ? "已复制" : "复制 " + label}>
+      {copied ? <Check /> : <Copy />}
+    </Button>
+    {open && <Button className="directory-open" variant="outline" size="sm" onClick={open}
+      aria-label="打开实际目录" title="打开实际目录"><FolderOpen data-icon="inline-start" /><span>打开实际目录</span></Button>}
   </div>
 }
 
-export function SkillDetail({ skill, description, aiSummary, update, repositoryLookupReady, rememberRepository }: {
-  skill: Skill; description: string; repositoryLookupReady: boolean
+export function SkillDetail({ skill, directories, description, aiSummary, update, repositoryLookupReady, rememberRepository }: {
+  skill: Skill; directories: Skill[]; description: string; repositoryLookupReady: boolean
   update?: SkillUpdate
   aiSummary?: string
   rememberRepository: (digest: string, url: string) => void
@@ -74,19 +77,25 @@ export function SkillDetail({ skill, description, aiSummary, update, repositoryL
     }, 350)
     return () => window.clearTimeout(timer)
   }, [repositoryLookupReady, limited, skill.directory, skill.digest, repository, rememberRepository])
-  async function open() {
+  async function open(directory: string) {
     try {
       setError("")
-      await invoke("open_directory", { directory: skill.directory })
+      await invoke("open_directory", { directory })
     } catch (reason) {
       setError("无法打开目录：" + String(reason))
     }
   }
+  const multiple = directories.length > 1
+  const targets = new Map<string, Skill[]>()
+  for (const directory of directories) {
+    const group = targets.get(directory.target)
+    if (group) group.push(directory)
+    else targets.set(directory.target, [directory])
+  }
   return <article className="detail" aria-label="Skill 详情">
     <div className="summary">
       <header className="flex items-center justify-between gap-3">
-        <div className="skill-title min-w-0 flex-1"><AgentIcon label={skill.label} /><h2>{skill.displayName}</h2>
-        <SkillTypeBadge linked={skill.linked} />
+        <div className="skill-title min-w-0 flex-1">{!multiple && <AgentIcon label={skill.label} />}<h2>{skill.displayName}</h2>
         {skill.version && <span className="relative top-0.5 text-sm text-muted-foreground tabular-nums" title="SKILL.md 中标注的版本">v{skill.version}</span>}
         </div>
         <div className="ml-auto flex max-w-1/2 shrink-0 items-center justify-end gap-2">
@@ -123,18 +132,24 @@ export function SkillDetail({ skill, description, aiSummary, update, repositoryL
           </div>}
         </div>
       </header>
-      {aiSummary ? <section className="ai-summary" aria-label="AI 概括">
-        <div className="ai-summary-label">
-          <AiSummaryIcon />
-          AI 概括
-        </div>
-        <p>{aiSummary}</p>
-      </section> : description && <p className="description">{description}</p>}
-      {skill.linked && <>
-        <PathField label="发现位置" path={skill.directory} report={setError} />
-        <div className="direction"><ArrowDown />指向</div>
-      </>}
-      <PathField label="实际目录" path={skill.target} open={open} report={setError} />
+      {aiSummary && <section className="ai-summary" aria-label="AI 概括">
+        <p><span className="ai-summary-label">AI 概括</span>{aiSummary}</p>
+      </section>}
+      {description && <p className="description">{description}</p>}
+      <section className="installation" aria-labelledby="installation-title">
+        <h3 id="installation-title">安装位置</h3>
+        {[...targets].map(([target, entries]) => {
+          const links = entries.filter(entry => entry.linked)
+          const actual = entries.find(entry => !entry.linked)
+          const discovered = actual ?? entries[0]
+          return <div className="directory-target" key={target}>
+            {links.map(link => <PathRow key={link.directory} source={agentSource(link.label).name}
+              path={link.directory} linked report={setError} />)}
+            <PathRow source={actual && agentSource(actual.label).name} path={target} hasLinks={links.length > 0}
+              open={() => void open(discovered.directory)} report={setError} />
+          </div>
+        })}
+      </section>
       {error && <p role="alert" className="warning">{error}</p>}
     </div>
     <div className="doc-bar"><FileText />SKILL.md</div>

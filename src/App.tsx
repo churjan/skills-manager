@@ -14,7 +14,7 @@ import { SkillUpdateBadge } from "./components/SkillUpdateBadge"
 import { isUnreadSkill, markSkillSeen, type SeenSkills } from "./newSkills"
 import { useSkillClock } from "./useSkillClock"
 import { SkillListPane } from "./components/SkillListPane"
-import { matches, type Inventory, type Skill, type SkillUpdate } from "./model"
+import { groupSkillDirectories, matches, type Inventory, type Skill, type SkillUpdate } from "./model"
 import { AiSettings } from "./AiSettings"
 import { findRepository, hydrateRepositoryLookups, retainRepositoryLookups, type RepositoryLookupCache } from "./repositories"
 import type { SettingsView } from "./aiModels"
@@ -61,10 +61,15 @@ export function App() {
   const [updates, setUpdates] = useState<Record<string, SkillUpdate>>({})
   const updatePass = useRef(0)
 
-  function open(skill: Skill) {
+  function open(skill: Skill, directories: Skill[]) {
     setSelection(skill.directory)
-    if (skill.installedAt === null || !isUnreadSkill(skill.directory, skill.installedAt, now, seen)) return
-    const next = markSkillSeen(seen, skill.directory, skill.installedAt, now)
+    let next = seen
+    for (const { directory, installedAt } of directories) {
+      if (installedAt !== null && isUnreadSkill(directory, installedAt, now, next)) {
+        next = markSkillSeen(next, directory, installedAt, now)
+      }
+    }
+    if (next === seen) return
     setSeen(next)
     try { localStorage.setItem(SEEN_KEY, JSON.stringify(next)) } catch { /* Keep the dot hidden for this session. */ }
   }
@@ -179,6 +184,8 @@ export function App() {
     .filter(skill => (!root || skill.root === root) && matches(skill, query, automatic ? summaries[skill.digest] : undefined))
     .sort((a, b) => compareSkills(a, b, sortOrder))
   const selected = results.find(skill => skill.directory === selection) ?? results[0]
+  const groups = groupSkillDirectories(results)
+  const selectedGroup = groups.find(([, directories]) => directories.some(skill => skill === selected))?.[1]
   const errors = [...(error ? [error] : []), ...report.errors]
 
   return <main className="workspace">
@@ -199,7 +206,7 @@ export function App() {
     <SkillListPane>
       <div className="tools">
         <div className="heading">
-          <h1 id="skill-list-heading" className="min-w-0" title={sourceName}><span className="truncate">{sourceName}</span> <Badge variant="secondary" className="skill-count shrink-0">{results.length}</Badge></h1>
+          <h1 id="skill-list-heading" className="min-w-0" title={sourceName}><span className="truncate">{sourceName}</span> <Badge variant="secondary" className="skill-count shrink-0">{groups.length}</Badge></h1>
           <div className="flex shrink-0 items-center gap-0.5">
           <Select value={sortOrder} onValueChange={value => {
             if (value !== "modified" && value !== "alphabetical") return
@@ -234,28 +241,48 @@ export function App() {
         {aiError && <p role="alert" className="warning">AI 简介：{aiError}</p>}
       </div>
       <div className="entries" key={root}>
-        {results.map(skill => {
+        {groups.map(([key, directories]) => {
+          const [skill] = directories
+          const multiple = directories.length > 1
+          const selectedDirectory = directories.find(directory => directory.directory === selected?.directory)
+          const expanded = multiple && Boolean(selectedDirectory)
+          const sourcesByType = new Map(directories.map(({ label, linked }) => {
+            const name = agentSource(label).name
+            return [JSON.stringify([name, linked]), { name, linked }] as const
+          }))
+          const unread = directories.some(directory => isUnreadSkill(directory.directory, directory.installedAt, now, seen))
+          const hasUpdate = directories.some(directory => directory.lockName && updates[directory.lockName] === "available")
           const description = (automatic ? summaries[skill.digest]?.trim() : undefined) || skill.description.trim() || "暂无描述"
-          return <Button key={skill.directory} variant="ghost" className="entry h-auto justify-start whitespace-normal"
-            title={[skill.displayName, description, skill.directory].join("\n")}
-            aria-pressed={skill.directory === selected?.directory} onClick={() => open(skill)}>
-            {isUnreadSkill(skill.directory, skill.installedAt, now, seen) &&
-              <span className="entry-unread" title="新安装，尚未查看" aria-label="新安装，尚未查看" />}
-            <span className="entry-copy">
-              <span className="entry-title">
-                <span className="entry-name">{skill.displayName}</span>
-                <SkillTypeBadge linked={skill.linked} />
-                <SkillUpdateBadge update={skill.lockName ? updates[skill.lockName] : undefined} />
+          return <div key={key} className={expanded ? "entry-group" : undefined}>
+            <Button variant="ghost" className="entry h-auto justify-start whitespace-normal"
+              title={[skill.displayName, description, ...directories.map(directory => directory.directory)].join("\n")}
+              aria-pressed={Boolean(selectedDirectory)}
+              aria-expanded={multiple ? expanded : undefined} onClick={() => open(selectedDirectory ?? skill, directories)}>
+              {unread && <span className="entry-unread" title="新安装，尚未查看" aria-label="新安装，尚未查看" />}
+              <span className="entry-copy">
+                <span className="entry-title">
+                  <span className="entry-name">{skill.displayName}</span>
+                  <SkillUpdateBadge update={hasUpdate ? "available" : undefined} />
+                </span>
+                <span className="entry-description">{description}</span>
+                {!root && !expanded && <span className="entry-sources">{[...sourcesByType].map(([key, { name, linked }]) =>
+                  <Badge key={key} variant={linked ? "sourceLinked" : "source"}
+                    title={`${name} · ${linked ? "软链接" : "实际目录"}`}>{name}</Badge>
+                )}</span>}
               </span>
-              {!root && <span className="entry-sources"><Badge variant="source">{agentSource(skill.label).name}</Badge></span>}
-              <span className="entry-description">{description}</span>
-            </span>
-          </Button>
+            </Button>
+            {expanded && <ul className="entry-directories" aria-label={skill.displayName + " 安装目录"}>
+              {directories.map(directory => <li key={directory.directory} className="entry-directory" title={directory.directory}>
+                <span className="truncate">{agentSource(directory.label).name}</span>
+                <SkillTypeBadge linked={directory.linked} />
+              </li>)}
+            </ul>}
+          </div>
         })}
         {!busy && !results.length && <div className="empty">{query.trim() ? "没有匹配的 Skill" : error ? "无法加载技能清单" : "在已扫描范围内未发现 Skill"}</div>}
       </div>
     </SkillListPane>
-    {selected ? <SkillDetail key={selected.directory + selected.target} skill={selected}
+    {selected && selectedGroup ? <SkillDetail key={selected.directory + selected.target} skill={selected} directories={selectedGroup}
       description={selected.description}
       aiSummary={automatic ? summaries[selected.digest]?.trim() : undefined}
       update={selected.lockName ? updates[selected.lockName] : undefined}
